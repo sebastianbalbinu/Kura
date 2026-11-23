@@ -174,20 +174,14 @@ private fun Navegacion(actual: Pantalla, alElegir: (Pantalla) -> Unit) {
     }
 }
 
-/** Fondo té hojicha con niebla cálida y textura de papel washi. */
+/** Fondo té hojicha liso con niebla cálida. */
 @Composable
 private fun Fondo(contenido: @Composable () -> Unit) {
-    val ctx = LocalContext.current
-    val washi = remember {
-        val bmp = BitmapFactory.decodeResource(ctx.resources, R.drawable.washi).asImageBitmap()
-        ShaderBrush(ImageShader(bmp, TileMode.Repeated, TileMode.Repeated))
-    }
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(K.fondoArriba, K.fondoAbajo)))) {
         Box(Modifier.offset((-40).dp, 120.dp).size(320.dp).clip(CircleShape).background(
             Brush.radialGradient(listOf(K.niebla.copy(alpha = 0.32f), Color.Transparent))))
         Box(Modifier.align(Alignment.BottomEnd).offset(80.dp, (-60).dp).size(300.dp).clip(CircleShape).background(
             Brush.radialGradient(listOf(Color(0xFF5A4030).copy(alpha = 0.25f), Color.Transparent))))
-        Box(Modifier.fillMaxSize().background(washi))
         contenido()
     }
 }
