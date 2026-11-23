@@ -72,6 +72,22 @@ object Kenzo {
         return una("Aquí estoy, señor. Cuénteme cada movimiento y yo lo organizo.", "Todo tranquilo en la bodega.")
     }
 
+    /** Saludos y agradecimientos: Kenzō responde sin necesitar IA. */
+    fun charla(texto: String): String? {
+        val t = " " + normal(texto).replace(Regex("[^a-z ]"), " ") + " "
+        return when {
+            listOf(" gracias ", " muchas gracias ", " mil gracias ").any { t.contains(it) } ->
+                una("Con gusto, señor.", "Para servirle, señor.", "Siempre a su servicio.")
+            listOf(" hola ", " buenas ", " buenos dias ", " buenas tardes ", " buenas noches ", " hey ", " que mas ", " kenzo ").any { t.contains(it) } &&
+                t.trim().split(" ").size <= 4 ->
+                saludo() + " " + una("¿Qué movimiento anotamos?", "Aquí estoy para organizar su plata.", "Cuénteme, ¿qué entró o qué salió hoy?")
+            listOf(" como estas ", " como esta ", " que tal ").any { t.contains(it) } ->
+                "Muy bien, señor, cuidando su bodega. ¿En qué le ayudo?"
+            listOf(" ayuda ", " que puedes hacer ", " que sabes hacer ", " como funciona ").any { t.contains(it) } -> ayuda().replace("Disculpe, señor, no entendí bien. ", "Con gusto, señor. ")
+            else -> null
+        }
+    }
+
     fun desgloseReparto(r: Map<Cofre, Long>) = r.map { (c, v) -> "${c.icono} ${c.nombre}" to pesos(v) }
 
     fun recibido(monto: Long, oficio: String?) =

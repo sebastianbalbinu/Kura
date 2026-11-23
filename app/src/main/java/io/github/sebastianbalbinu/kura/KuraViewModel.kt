@@ -59,7 +59,7 @@ class KuraViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { actualizador.buscar() }
         // Si ya hay un modelo descargado, se carga en silencio.
         val m = ia.elegido(_estado.value.ajustes.modeloIa)
-        if (m != null && ia.descargado(m)) viewModelScope.launch { ia.cargar(m) }
+        if (m != null && ia.descargado(m)) ia.cargar(m)
     }
 
     // ------------------------------------------------------------------ guardar
@@ -89,7 +89,10 @@ class KuraViewModel(app: Application) : AndroidViewModel(app) {
         val intenciones = Interprete.entender(limpio, _estado.value)
         val desconocidas = intenciones.filterIsInstance<Intencion.Desconocido>()
         intenciones.filter { it !is Intencion.Desconocido }.forEach { atender(it) }
-        if (desconocidas.isNotEmpty() && intenciones.size == desconocidas.size) conIA(limpio)
+        if (desconocidas.isNotEmpty() && intenciones.size == desconocidas.size) {
+            val charla = Kenzo.charla(limpio)
+            if (charla != null) kenzo(charla) else conIA(limpio)
+        }
     }
 
     private fun atender(i: Intencion) {
@@ -273,6 +276,7 @@ class KuraViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun conIA(texto: String) {
         if (!ia.lista) { kenzo(Kenzo.ayuda()); return }
+        if (ia.pensandoAhora) { kenzo("Un momento, señor, aún estoy pensando la respuesta anterior."); return }
         viewModelScope.launch {
             pensando.value = true
             val e = _estado.value
@@ -318,18 +322,18 @@ class KuraViewModel(app: Application) : AndroidViewModel(app) {
         cambiar { it.copy(ajustes = it.ajustes.copy(modeloIa = clave)) }
         val m = ia.elegido(clave)
         if (m == null) ia.apagar()
-        else if (ia.descargado(m)) viewModelScope.launch { ia.cargar(m) }
+        else if (ia.descargado(m)) ia.cargar(m)
     }
 
-    fun medirIA() = viewModelScope.launch {
+    fun probarIA() = viewModelScope.launch {
         pensando.value = true
-        val v = ia.medirVelocidad()
+        kenzo("Voy a probar mi mente, señor. La primera vez puede tardar uno o dos minutos…")
+        val p = ia.probar()
         pensando.value = false
-        val m = (ia.estado.value as? EstadoIA.Lista)?.modelo
         kenzo(when {
-            v == null -> "No pude medir la velocidad, señor."
-            v < 6 && m == Modelo.Q2B -> "En este teléfono escribo unas ${v.toInt()} letras por segundo. Es lento; le sugiero el modelo 0.8B."
-            else -> "En este teléfono escribo unas ${v.toInt()} letras por segundo. Funciona bien."
+            p.respuesta.isNullOrBlank() -> "No logré responder. " + ((ia.estado.value as? EstadoIA.Error)?.mensaje ?: "")
+            p.segundos > 90 -> "Funciono, pero tardé ${p.segundos.toInt()} segundos: «${p.respuesta}». En este teléfono le conviene el modelo más pequeño."
+            else -> "Funciono bien: tardé ${p.segundos.toInt()} segundos. Mi respuesta fue: «${p.respuesta}»"
         })
     }
 

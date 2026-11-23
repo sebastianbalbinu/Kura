@@ -53,8 +53,6 @@ class KenzoIA(private val context: Context) {
     private val _estado = MutableStateFlow<EstadoIA>(EstadoIA.SinModelo)
     val estado: StateFlow<EstadoIA> = _estado
 
-    private var engine: Engine? = null
-    private val candado = Mutex()
 
     private val carpeta get() = File(context.getExternalFilesDir(null) ?: context.filesDir, "modelos").apply { mkdirs() }
     fun archivo(m: Modelo) = File(carpeta, m.archivo)
@@ -82,8 +80,7 @@ class KenzoIA(private val context: Context) {
     fun descargado(m: Modelo) = archivo(m).let { it.exists() && it.length() > 50_000_000 }
 
     fun apagar() {
-        engine?.let { runCatching { it.close() } }
-        engine = null
+        modeloActivo = null
         _estado.value = EstadoIA.Apagada
     }
 
@@ -193,52 +190,76 @@ class KenzoIA(private val context: Context) {
         apagar(); archivo(m).delete(); parcial(m).delete(); _estado.value = EstadoIA.SinModelo
     }
 
-    suspend fun cargar(m: Modelo) = withContext(Dispatchers.Default) {
-        candado.withLock {
-            if (!descargado(m)) { _estado.value = EstadoIA.SinModelo; return@withLock }
-            engine?.let { runCatching { it.close() } }; engine = null
-            _estado.value = EstadoIA.Cargando(m)
-            try {
-                val e = Engine(EngineConfig(modelPath = archivo(m).absolutePath, backend = Backend.CPU(),
+    // ---------------------------------------------------------------- usar la IA
+    // La guía del modelo pide un motor (Engine) nuevo por cada conversación,
+    // así que Kenzō lo crea al preguntar y lo cierra al terminar. Así además
+    // no se queda ocupando 2 GB de memoria mientras usted usa otras apps.
+
+    private var modeloActivo: Modelo? = null
+    private val ocupado = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** Deja el modelo listo para usarse (sin cargarlo todavía en memoria). */
+    fun cargar(m: Modelo) {
+        if (!descargado(m)) { _estado.value = EstadoIA.SinModelo; return }
+        modeloActivo = m
+        _estado.value = EstadoIA.Lista(m, null)
+    }
+
+    val lista get() = modeloActivo != null && _estado.value !is EstadoIA.Descargando
+    val pensandoAhora get() = ocupado.get()
+
+    /**
+     * Crea el motor, pregunta y lo cierra. Corre en un hilo aparte con tiempo límite:
+     * si el teléfono se queda pegado, Kenzō no se congela con él.
+     */
+    suspend fun preguntar(sistema: String, mensaje: String, temperatura: Double = 0.4,
+                          limiteSeg: Long = 240): String? {
+        val m = modeloActivo ?: return null
+        if (!ocupado.compareAndSet(false, true)) return null
+        val resultado = kotlinx.coroutines.CompletableDeferred<Result<String>>()
+        Thread({
+            var e: Engine? = null
+            val r = runCatching {
+                e = Engine(EngineConfig(modelPath = archivo(m).absolutePath, backend = Backend.CPU(),
                     cacheDir = context.cacheDir.path))
-                e.initialize()
-                engine = e
-                _estado.value = EstadoIA.Lista(m, null)
-            } catch (t: Throwable) {
-                _estado.value = EstadoIA.Error("No pude cargar el modelo: ${t.message ?: t.javaClass.simpleName}")
+                e!!.initialize()
+                val cfg = ConversationConfig(
+                    systemInstruction = Contents.of(sistema),
+                    samplerConfig = SamplerConfig(topK = 20, topP = 0.9, temperature = temperatura)
+                )
+                e!!.createConversation(cfg).use { conv -> limpiar(conv.sendMessage(mensaje).toString()) }
             }
+            runCatching { e?.close() }
+            ocupado.set(false)
+            resultado.complete(r)
+        }, "kenzo-ia").apply { priority = Thread.NORM_PRIORITY }.start()
+
+        val r = kotlinx.coroutines.withTimeoutOrNull(limiteSeg * 1000) { resultado.await() }
+        return when {
+            r == null -> {
+                _estado.value = EstadoIA.Error("La IA tardó más de $limiteSeg segundos en responder. Este teléfono puede necesitar el modelo más pequeño.")
+                null
+            }
+            r.isFailure -> {
+                val t = r.exceptionOrNull()
+                _estado.value = EstadoIA.Error("La IA falló: ${t?.message ?: t?.javaClass?.simpleName}")
+                null
+            }
+            else -> r.getOrNull()
         }
     }
 
-    val lista get() = engine != null && _estado.value is EstadoIA.Lista
+    data class Prueba(val respuesta: String?, val segundos: Float)
 
-    /** Le pregunta algo a la IA. Cada pregunta es una conversación nueva y corta, para ir rápido. */
-    suspend fun preguntar(sistema: String, mensaje: String, temperatura: Double = 0.4): String? =
-        withContext(Dispatchers.Default) {
-            candado.withLock {
-                val e = engine ?: return@withLock null
-                try {
-                    val cfg = ConversationConfig(
-                        systemInstruction = Contents.of(sistema),
-                        samplerConfig = SamplerConfig(topK = 20, topP = 0.9, temperature = temperatura)
-                    )
-                    e.createConversation(cfg).use { conv ->
-                        limpiar(conv.sendMessage(mensaje).toString())
-                    }
-                } catch (t: Throwable) {
-                    null
-                }
-            }
-        }
-
-    /** Mide cuántas letras por segundo escribe el modelo en este teléfono. */
-    suspend fun medirVelocidad(): Float? {
+    /** Le hace una pregunta corta para comprobar que funciona y cuánto tarda. */
+    suspend fun probar(): Prueba {
+        val m = modeloActivo ?: return Prueba(null, 0f)
+        _estado.value = EstadoIA.Cargando(m)
         val ini = System.nanoTime()
-        val r = preguntar("Responde en español, breve.", "Escribe una frase corta sobre ahorrar dinero.") ?: return null
+        val r = preguntar("Responde en español, en una sola frase corta.", "Saluda a tu señor.", limiteSeg = 300)
         val seg = (System.nanoTime() - ini) / 1e9f
-        val v = r.length / seg
-        (estado.value as? EstadoIA.Lista)?.let { _estado.value = it.copy(velocidad = v) }
-        return v
+        if (r != null) _estado.value = EstadoIA.Lista(m, r.length / seg)
+        return Prueba(r, seg)
     }
 
     private fun limpiar(s: String) = s

@@ -54,7 +54,7 @@ fun PantallaKenzo(e: Estado, vm: KuraViewModel) {
                 Text(
                     when (val s = ia) {
                         is EstadoIA.Lista -> "su administrador · ${s.modelo.nombre}"
-                        is EstadoIA.Cargando -> "despertando su mente…"
+                        is EstadoIA.Cargando -> "probando su mente…"
                         is EstadoIA.Descargando -> "aprendiendo · ${(s.progreso * 100).toInt()}%"
                         else -> "su administrador"
                     }, style = Letra.suave.copy(fontSize = 11.sp)
@@ -69,7 +69,7 @@ fun PantallaKenzo(e: Estado, vm: KuraViewModel) {
                 TarjetaKenzo("Aquí estoy, señor. Cuénteme cada movimiento como se lo contaría a una persona: «me pagaron 200 de la web», «eché 15 de gasolina», «¿puedo pagar 150 el viernes?». Yo organizo todo.")
             }
             items(e.chat, key = { it.id }) { m -> Burbuja(m, vm) }
-            if (pensando) item { Text("Kenzō está pensando…", style = Letra.suave.copy(fontFamily = Mincho), modifier = Modifier.padding(6.dp)) }
+            if (pensando) item { Text("Kenzō está pensando… (con IA puede tardar un minuto)", style = Letra.suave.copy(fontFamily = Mincho), modifier = Modifier.padding(6.dp)) }
         }
     }
 }

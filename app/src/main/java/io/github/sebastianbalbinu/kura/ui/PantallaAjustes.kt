@@ -69,8 +69,8 @@ fun PantallaAjustes(e: Estado, vm: KuraViewModel, alVolver: () -> Unit) {
             Spacer(Modifier.height(12.dp))
             Text(
                 when (val s = ia) {
-                    is EstadoIA.Lista -> "✓ Activa: ${s.modelo.nombre}" + (s.velocidad?.let { " · ${it.toInt()} letras/seg" } ?: "")
-                    is EstadoIA.Cargando -> "Cargando ${s.modelo.nombre}…"
+                    is EstadoIA.Lista -> "✓ Lista: ${s.modelo.nombre}" + (s.velocidad?.let { " · ${it.toInt()} letras/seg" } ?: "")
+                    is EstadoIA.Cargando -> "Probando ${s.modelo.nombre}… puede tardar uno o dos minutos"
                     is EstadoIA.Descargando -> "Descargando ${s.modelo.nombre}: ${(s.progreso * 100).toInt()}%" +
                         if (s.reintentando) " · se cortó, reintentando…" else "\nDeje Kura abierta: la pantalla no se apagará."
                     is EstadoIA.Error -> s.mensaje
@@ -102,7 +102,7 @@ fun PantallaAjustes(e: Estado, vm: KuraViewModel, alVolver: () -> Unit) {
             }
             Spacer(Modifier.height(8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (ia is EstadoIA.Lista) BotonSuave("Medir velocidad") { vm.medirIA() }
+                if (ia is EstadoIA.Lista || ia is EstadoIA.Error) BotonDorado("Probar a Kenzō") { vm.probarIA() }
                 if (ia is EstadoIA.Descargando) BotonSuave("Pausar descarga") { vm.ia.pausarDescarga() }
                 BotonSuave(if (e.ajustes.modeloIa == "ninguno") "✓ Sin IA" else "Usar sin IA") { vm.usarIA("ninguno") }
             }
