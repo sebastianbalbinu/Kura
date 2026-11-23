@@ -23,9 +23,10 @@ android {
             val ks = file(System.getenv("KURA_KEYSTORE_PATH") ?: "none.jks")
             if (ks.exists()) {
                 storeFile = ks
-                storePassword = System.getenv("KURA_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KURA_KEY_ALIAS")
-                keyPassword = System.getenv("KURA_KEY_PASSWORD")
+                // La contraseña no es el secreto: sin el archivo de la llave no sirve de nada.
+                storePassword = "kura-firma"
+                keyAlias = "kura"
+                keyPassword = "kura-firma"
             }
         }
     }

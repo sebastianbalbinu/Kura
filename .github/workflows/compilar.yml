@@ -33,10 +33,6 @@ jobs:
           fi
 
       - name: Compilar
-        env:
-          KURA_KEYSTORE_PASSWORD: ${{ secrets.KURA_KEYSTORE_PASSWORD }}
-          KURA_KEY_ALIAS: ${{ secrets.KURA_KEY_ALIAS }}
-          KURA_KEY_PASSWORD: ${{ secrets.KURA_KEY_PASSWORD }}
         run: gradle :app:assembleRelease --stacktrace
 
       - name: Nombrar APK
