@@ -151,6 +151,13 @@ fun PantallaAjustes(e: Estado, vm: KuraViewModel, alVolver: () -> Unit) {
         }
 
         Titulito("OTROS", null) {}
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp).vidrio().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Versión ${vm.actualizador.nombreActual}", style = Letra.cuerpo)
+                Text("Se busca sola al abrir Kura", style = Letra.suave.copy(fontSize = 12.sp))
+            }
+            BotonSuave("Buscar") { vm.buscarActualizacion() }
+        }
         Row(Modifier.fillMaxWidth().vidrio().clickable { vm.ajustar { it.copy(sonido = !it.sonido) } }.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Text("Campanita al guardar", style = Letra.cuerpo, modifier = Modifier.weight(1f))

@@ -46,6 +46,7 @@ class KuraViewModel(app: Application) : AndroidViewModel(app) {
     val estado: StateFlow<Estado> = _estado
 
     val ia = KenzoIA(app)
+    val actualizador = Actualizador(app)
     val opciones = mutableStateMapOf<Long, List<Opcion>>()
     val campana = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
     val compartir = MutableSharedFlow<String>(extraBufferCapacity = 2)
@@ -55,6 +56,7 @@ class KuraViewModel(app: Application) : AndroidViewModel(app) {
     private fun nuevoId() = ++siguienteId
 
     init {
+        viewModelScope.launch { actualizador.buscar() }
         // Si ya hay un modelo descargado, se carga en silencio.
         val m = ia.elegido(_estado.value.ajustes.modeloIa)
         if (m != null && ia.descargado(m)) viewModelScope.launch { ia.cargar(m) }
@@ -355,4 +357,16 @@ class KuraViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun idNuevo() = nuevoId()
+
+    fun buscarActualizacion() = viewModelScope.launch {
+        if (!actualizador.buscar()) kenzo("Kura está al día, señor: tiene la versión ${actualizador.nombreActual}.")
+    }
+
+    fun actualizar() {
+        when (val s = actualizador.estado.value) {
+            is EstadoActualizacion.Disponible -> viewModelScope.launch { actualizador.descargar(s.v) }
+            is EstadoActualizacion.Lista -> actualizador.instalar(s.archivo)
+            else -> Unit
+        }
+    }
 }

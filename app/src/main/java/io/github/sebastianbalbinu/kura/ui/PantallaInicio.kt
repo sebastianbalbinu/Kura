@@ -19,7 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.sebastianbalbinu.kura.EstadoActualizacion
 import io.github.sebastianbalbinu.kura.data.Estado
+import androidx.compose.foundation.layout.width
 import io.github.sebastianbalbinu.kura.engine.Calculos
 import io.github.sebastianbalbinu.kura.engine.Kenzo
 import io.github.sebastianbalbinu.kura.engine.fechaLarga
@@ -28,7 +30,8 @@ import io.github.sebastianbalbinu.kura.engine.pesos
 import kotlin.math.ceil
 
 @Composable
-fun PantallaInicio(e: Estado, alAjustes: () -> Unit, alKenzo: () -> Unit) {
+fun PantallaInicio(e: Estado, alAjustes: () -> Unit, alKenzo: () -> Unit,
+                   actualizacion: EstadoActualizacion = EstadoActualizacion.Nada, alActualizar: () -> Unit = {}) {
     val meta = remember(e) { Calculos.metaDelDia(e) }
     val gastar = remember(e) { Calculos.puedeGastarHoy(e) }
     val aviso = remember(e.movimientos.size, e.pagosFijos, e.cobros, e.oficios, e.ajustes, e.bienvenidaVista) { Kenzo.aviso(e) }
@@ -81,6 +84,7 @@ fun PantallaInicio(e: Estado, alAjustes: () -> Unit, alKenzo: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         )
 
+        TarjetaActualizacion(actualizacion, alActualizar)
         TarjetaKenzo(aviso, alTocar = alKenzo)
 
         Column(Modifier.fillMaxWidth().padding(top = 26.dp, bottom = 24.dp), horizontalAlignment = Alignment.CenterHorizontally,
@@ -88,6 +92,26 @@ fun PantallaInicio(e: Estado, alAjustes: () -> Unit, alKenzo: () -> Unit) {
             Text(prov.jp, style = Letra.cuerpo.copy(color = Color9, letterSpacing = 3.sp, fontSize = 16.sp))
             Text(prov.es, style = Letra.suave.copy(fontFamily = Mincho, color = K.textoTenue, textAlign = TextAlign.Center))
         }
+    }
+}
+
+@Composable
+private fun TarjetaActualizacion(a: EstadoActualizacion, alActualizar: () -> Unit) {
+    val (texto, boton) = when (a) {
+        is EstadoActualizacion.Disponible -> "Hay una versión nueva de Kura (${a.v.nombre}), señor. ¿La instalo?" to "Actualizar"
+        is EstadoActualizacion.Descargando -> "Descargando Kura ${a.v.nombre}… ${(a.progreso * 100).toInt()}%" to null
+        is EstadoActualizacion.Lista -> "Kura ${a.v.nombre} está lista. Toque para instalar." to "Instalar"
+        is EstadoActualizacion.Error -> a.mensaje to null
+        EstadoActualizacion.Nada -> return
+    }
+    Column(Modifier.fillMaxWidth().padding(bottom = 12.dp).vidrio(borde = androidx.compose.ui.graphics.Color(0x80C9A96E)).padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Hanko("新", 30.dp)
+            androidx.compose.foundation.layout.Spacer(Modifier.width(12.dp))
+            Text(texto, style = Letra.cuerpo.copy(fontSize = 14.sp), modifier = Modifier.weight(1f))
+        }
+        if (a is EstadoActualizacion.Descargando) { Spacer(Modifier.height(10.dp)); BarraArroz(a.progreso) }
+        if (boton != null) { Spacer(Modifier.height(12.dp)); BotonDorado(boton, Modifier.fillMaxWidth()) { alActualizar() } }
     }
 }
 

@@ -97,6 +97,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun App(vm: KuraViewModel, alSonar: () -> Unit) {
     val e by vm.estado.collectAsState()
+    val actualizacion by vm.actualizador.estado.collectAsState()
     var pantalla by rememberSaveable { mutableStateOf(Pantalla.INICIO) }
     val ctx = LocalContext.current
 
@@ -131,7 +132,8 @@ fun App(vm: KuraViewModel, alSonar: () -> Unit) {
             Box(Modifier.weight(1f)) {
                 AnimatedContent(pantalla, transitionSpec = { fadeIn(tween(260)) togetherWith fadeOut(tween(200)) }, label = "pantalla") { p ->
                     when (p) {
-                        Pantalla.INICIO -> PantallaInicio(e, alAjustes = { pantalla = Pantalla.AJUSTES }, alKenzo = { pantalla = Pantalla.KENZO })
+                        Pantalla.INICIO -> PantallaInicio(e, alAjustes = { pantalla = Pantalla.AJUSTES }, alKenzo = { pantalla = Pantalla.KENZO },
+                            actualizacion = actualizacion, alActualizar = { vm.actualizar() })
                         Pantalla.BODEGA -> PantallaBodega(e, vm)
                         Pantalla.OFICIOS -> PantallaOficios(e, vm)
                         Pantalla.KENZO -> PantallaKenzo(e, vm)
