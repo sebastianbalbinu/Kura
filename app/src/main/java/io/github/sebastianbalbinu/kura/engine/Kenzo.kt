@@ -9,24 +9,24 @@ import java.time.temporal.ChronoUnit
 /** La voz de Kenzō sin IA: frases escritas a mano, tranquilas y respetuosas. */
 object Kenzo {
 
-    data class Proverbio(val jp: String, val es: String)
+    data class Proverbio(val es: String)
 
     val proverbios = listOf(
-        Proverbio("塵も積もれば山となる", "Hasta el polvo, acumulado, se vuelve montaña."),
-        Proverbio("急がば回れ", "Si tiene prisa, tome el camino largo."),
-        Proverbio("石の上にも三年", "Tres años sobre la piedra, y la piedra se calienta."),
-        Proverbio("安物買いの銭失い", "Quien compra lo barato pierde su dinero."),
-        Proverbio("腹八分目", "Coma hasta quedar ocho partes lleno."),
-        Proverbio("七転び八起き", "Caer siete veces, levantarse ocho."),
-        Proverbio("備えあれば憂いなし", "Quien está preparado no tiene de qué preocuparse."),
-        Proverbio("継続は力なり", "La constancia es fuerza."),
-        Proverbio("時は金なり", "El tiempo es oro."),
-        Proverbio("早起きは三文の徳", "Madrugar vale tres monedas."),
-        Proverbio("千里の道も一歩から", "Un viaje de mil leguas empieza con un paso."),
-        Proverbio("金は天下の回り物", "El dinero da vueltas por el mundo."),
-        Proverbio("足るを知る", "Saber que se tiene suficiente."),
-        Proverbio("雨垂れ石を穿つ", "La gota de lluvia perfora la piedra."),
-        Proverbio("知らぬが仏", "Lo que no se sabe no inquieta… pero en Kura sí se sabe.")
+        Proverbio("Hasta el polvo, acumulado, se vuelve montaña."),
+        Proverbio("Si tiene prisa, tome el camino largo."),
+        Proverbio("Tres años sobre la piedra, y la piedra se calienta."),
+        Proverbio("Quien compra lo barato pierde su dinero."),
+        Proverbio("Coma hasta quedar ocho partes lleno."),
+        Proverbio("Caer siete veces, levantarse ocho."),
+        Proverbio("Quien está preparado no tiene de qué preocuparse."),
+        Proverbio("La constancia es fuerza."),
+        Proverbio("El tiempo es oro."),
+        Proverbio("Madrugar vale tres monedas."),
+        Proverbio("Un viaje de mil leguas empieza con un paso."),
+        Proverbio("El dinero da vueltas por el mundo."),
+        Proverbio("Saber que se tiene suficiente."),
+        Proverbio("La gota de lluvia perfora la piedra."),
+        Proverbio("Lo que no se sabe no inquieta… pero en Kura sí se sabe.")
     )
 
     fun proverbioDelDia() = proverbios[hoy().dayOfYear % proverbios.size]
@@ -72,7 +72,7 @@ object Kenzo {
         return una("Aquí estoy, señor. Cuénteme cada movimiento y yo lo organizo.", "Todo tranquilo en la bodega.")
     }
 
-    fun desgloseReparto(r: Map<Cofre, Long>) = r.map { (c, v) -> "${c.kanji} ${c.nombre}" to pesos(v) }
+    fun desgloseReparto(r: Map<Cofre, Long>) = r.map { (c, v) -> "${c.icono} ${c.nombre}" to pesos(v) }
 
     fun recibido(monto: Long, oficio: String?) =
         una("Recibido, señor.", "Muy bien, señor.", "Anotado, señor.") +

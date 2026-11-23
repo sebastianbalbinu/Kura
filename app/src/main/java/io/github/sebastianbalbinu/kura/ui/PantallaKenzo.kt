@@ -47,7 +47,7 @@ fun PantallaKenzo(e: Estado, vm: KuraViewModel) {
     Column(Modifier.padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(18.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Hanko("賢", 34.dp)
+            Hanko("K", 34.dp)
             Spacer(Modifier.width(10.dp))
             Column {
                 Text("Kenzō", style = Letra.titulo.copy(fontSize = 20.sp))

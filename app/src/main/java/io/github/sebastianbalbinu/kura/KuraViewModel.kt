@@ -247,7 +247,7 @@ class KuraViewModel(app: Application) : AndroidViewModel(app) {
         val mejor = Calculos.resumenMes(e).filter { it.ingresos > 0 }.maxByOrNull { it.porHora }
         kenzo("Así va el mes, señor:" + (mejor?.let { "\n${it.oficio.nombre} es lo que mejor le paga por hora." } ?: ""),
             listOf("Entró" to pesos(entro), "Salió" to pesos(salio)) +
-                Cofre.entries.map { "${it.kanji} ${it.nombre}" to pesos(Calculos.cofre(e, it)) } +
+                Cofre.entries.map { "${it.icono} ${it.nombre}" to pesos(Calculos.cofre(e, it)) } +
                 listOf("Meta de hoy" to if (meta.descansa) "descanso" else pesos(meta.meta)))
     }
 
@@ -309,6 +309,7 @@ class KuraViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun descargarIA(m: Modelo) {
+        if (ia.estado.value is EstadoIA.Descargando) return
         cambiar { it.copy(ajustes = it.ajustes.copy(modeloIa = m.clave)) }
         viewModelScope.launch { ia.descargarYCargar(m) }
     }

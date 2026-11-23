@@ -68,8 +68,8 @@ import io.github.sebastianbalbinu.kura.ui.PantallaOficios
 import io.github.sebastianbalbinu.kura.ui.TemaKura
 import io.github.sebastianbalbinu.kura.ui.vidrio
 
-enum class Pantalla(val kanji: String, val nombre: String) {
-    INICIO("蔵", "Inicio"), BODEGA("箱", "Bodega"), OFICIOS("職", "Oficios"), KENZO("賢", "Kenzō"), AJUSTES("設", "Ajustes")
+enum class Pantalla(val nombre: String) {
+    INICIO("Inicio"), BODEGA("Bodega"), OFICIOS("Oficios"), KENZO("Kenzō"), AJUSTES("Ajustes")
 }
 
 class MainActivity : ComponentActivity() {
@@ -98,6 +98,13 @@ class MainActivity : ComponentActivity() {
 fun App(vm: KuraViewModel, alSonar: () -> Unit) {
     val e by vm.estado.collectAsState()
     val actualizacion by vm.actualizador.estado.collectAsState()
+    val estadoIa by vm.ia.estado.collectAsState()
+    val vista = androidx.compose.ui.platform.LocalView.current
+    // Mientras baja el modelo, la pantalla no se apaga (así Android no corta la descarga).
+    androidx.compose.runtime.DisposableEffect(estadoIa is io.github.sebastianbalbinu.kura.ia.EstadoIA.Descargando) {
+        vista.keepScreenOn = estadoIa is io.github.sebastianbalbinu.kura.ia.EstadoIA.Descargando
+        onDispose { vista.keepScreenOn = false }
+    }
     var pantalla by rememberSaveable { mutableStateOf(Pantalla.INICIO) }
     val ctx = LocalContext.current
 
@@ -164,11 +171,13 @@ private fun Navegacion(actual: Pantalla, alElegir: (Pantalla) -> Unit) {
             Column(
                 Modifier.weight(1f)
                     .clickable(remember { MutableInteractionSource() }, indication = null) { alElegir(p) }
-                    .padding(vertical = 9.dp),
+                    .padding(vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(p.kanji, fontSize = 19.sp, color = if (sel) K.oro else K.textoTenue)
-                Text(p.nombre, fontSize = 10.5.sp, color = if (sel) K.oroClaro else K.textoTenue)
+                Text(p.nombre, fontSize = 14.sp, color = if (sel) K.oroClaro else K.textoTenue,
+                    fontWeight = if (sel) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Normal)
+                Box(Modifier.padding(top = 5.dp).size(4.dp).clip(CircleShape)
+                    .background(if (sel) K.oro else Color.Transparent))
             }
         }
     }

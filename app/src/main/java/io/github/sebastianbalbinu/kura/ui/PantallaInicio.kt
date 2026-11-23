@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.sebastianbalbinu.kura.EstadoActualizacion
 import io.github.sebastianbalbinu.kura.data.Estado
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.width
 import io.github.sebastianbalbinu.kura.engine.Calculos
 import io.github.sebastianbalbinu.kura.engine.Kenzo
@@ -44,7 +45,9 @@ fun PantallaInicio(e: Estado, alAjustes: () -> Unit, alKenzo: () -> Unit,
                 Text(Kenzo.saludo(), style = Letra.cuerpo.copy(color = K.textoSuave))
                 Text(fechaLarga(hoy()), style = Letra.suave.copy(fontFamily = Mincho, color = K.textoTenue))
             }
-            Hanko("蔵", 42.dp, Modifier.clickable { alAjustes() })
+            Text("⚙", fontSize = 22.sp, color = K.oro, modifier = Modifier
+                .clip(androidx.compose.foundation.shape.CircleShape).clickable { alAjustes() }
+                .vidrio(22.dp).padding(horizontal = 12.dp, vertical = 8.dp))
         }
 
         Enso(
@@ -89,8 +92,8 @@ fun PantallaInicio(e: Estado, alAjustes: () -> Unit, alKenzo: () -> Unit,
 
         Column(Modifier.fillMaxWidth().padding(top = 26.dp, bottom = 24.dp), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(prov.jp, style = Letra.cuerpo.copy(color = Color9, letterSpacing = 3.sp, fontSize = 16.sp))
-            Text(prov.es, style = Letra.suave.copy(fontFamily = Mincho, color = K.textoTenue, textAlign = TextAlign.Center))
+            Text("REFRÁN DEL DÍA", style = Letra.etiqueta)
+            Text(prov.es, style = Letra.cuerpo.copy(fontFamily = Mincho, color = Color9, textAlign = TextAlign.Center, fontSize = 16.sp))
         }
     }
 }
@@ -106,7 +109,7 @@ private fun TarjetaActualizacion(a: EstadoActualizacion, alActualizar: () -> Uni
     }
     Column(Modifier.fillMaxWidth().padding(bottom = 12.dp).vidrio(borde = androidx.compose.ui.graphics.Color(0x80C9A96E)).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Hanko("新", 30.dp)
+            Hanko("↑", 30.dp)
             androidx.compose.foundation.layout.Spacer(Modifier.width(12.dp))
             Text(texto, style = Letra.cuerpo.copy(fontSize = 14.sp), modifier = Modifier.weight(1f))
         }

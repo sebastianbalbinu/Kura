@@ -9,11 +9,11 @@ enum class TipoOficio(val etiqueta: String) {
 }
 
 /** Los cofres de la bodega. Cada peso que entra cae en uno. */
-enum class Cofre(val kanji: String, val nombre: String, val sub: String) {
-    FIJOS("払", "Pagos fijos", "Lo de cada mes, apartado"),
-    NEGOCIO("商", "Negocio", "Reponer y pagar proveedores"),
-    COLCHON("備", "Colchón", "Para los meses flojos"),
-    LIBRE("自", "Libre", "Suyo, sin culpa")
+enum class Cofre(val icono: String, val nombre: String, val sub: String) {
+    FIJOS("📅", "Pagos fijos", "Lo de cada mes, apartado"),
+    NEGOCIO("💼", "Negocio", "Reponer y pagar proveedores"),
+    COLCHON("🛟", "Colchón", "Para los meses flojos"),
+    LIBRE("🍃", "Libre", "Suyo, sin culpa")
 }
 
 data class Oficio(

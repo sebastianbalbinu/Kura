@@ -1,7 +1,7 @@
-# Kura 蔵
+# Kura
 
 Finanzas personales y de negocio, juntas, para gente que gana plata por muchos lados.
-Kenzō 賢三, su administrador de confianza, reparte cada ingreso en cofres, le dice cuánto
+Kenzō, su administrador de confianza, reparte cada ingreso en cofres, le dice cuánto
 necesita hacerse hoy y responde «¿puedo pagar esto?» con plata segura.
 
 - **Cofres:** pagos fijos, negocio, colchón y libre.

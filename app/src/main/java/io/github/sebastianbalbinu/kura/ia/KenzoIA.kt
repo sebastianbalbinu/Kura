@@ -1,9 +1,9 @@
 package io.github.sebastianbalbinu.kura.ia
 
 import android.app.ActivityManager
-import android.app.DownloadManager
 import android.content.Context
-import android.net.Uri
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ConversationConfig
@@ -18,6 +18,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 
 /** Los cerebros posibles de Kenzō, del más liviano al más listo. */
 enum class Modelo(val clave: String, val nombre: String, val archivo: String, val url: String, val tamanoMb: Int) {
@@ -33,7 +37,7 @@ enum class Modelo(val clave: String, val nombre: String, val archivo: String, va
 
 sealed class EstadoIA {
     data object SinModelo : EstadoIA()
-    data class Descargando(val modelo: Modelo, val progreso: Float) : EstadoIA()
+    data class Descargando(val modelo: Modelo, val progreso: Float, val reintentando: Boolean = false) : EstadoIA()
     data class Cargando(val modelo: Modelo) : EstadoIA()
     data class Lista(val modelo: Modelo, val velocidad: Float?) : EstadoIA()
     data class Error(val mensaje: String) : EstadoIA()
@@ -51,7 +55,6 @@ class KenzoIA(private val context: Context) {
 
     private var engine: Engine? = null
     private val candado = Mutex()
-    private var descargaId: Long = -1
 
     private val carpeta get() = File(context.getExternalFilesDir(null) ?: context.filesDir, "modelos").apply { mkdirs() }
     fun archivo(m: Modelo) = File(carpeta, m.archivo)
@@ -84,51 +87,110 @@ class KenzoIA(private val context: Context) {
         _estado.value = EstadoIA.Apagada
     }
 
-    /** Descarga el modelo solo por wifi y luego lo carga. */
+    @Volatile private var pausar = false
+
+    private fun parcial(m: Modelo) = File(carpeta, m.archivo + ".parcial")
+
+    /** Cuánto lleva descargado (0 a 1) si quedó una descarga a medias. */
+    fun progresoGuardado(m: Modelo): Float =
+        parcial(m).let { if (it.exists()) (it.length() / (m.tamanoMb * 1_000_000f)).coerceIn(0f, 0.99f) else 0f }
+
+    private fun enWifi(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+    }
+
+    /**
+     * Descarga el modelo por partes, solo con wifi. Si se corta, reintenta solo y
+     * continúa desde donde iba: nunca empieza de cero. Luego lo carga.
+     */
     suspend fun descargarYCargar(m: Modelo) {
         if (descargado(m)) { cargar(m); return }
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val tmp = File(carpeta, m.archivo + ".parcial"); tmp.delete()
-        val req = DownloadManager.Request(Uri.parse(m.url))
-            .setTitle("Kenzō · ${m.nombre}")
-            .setDescription("El cerebro de Kenzō (${m.tamanoMb} MB)")
-            .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI)
-            .setAllowedOverMetered(false)
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-            .setDestinationUri(Uri.fromFile(tmp))
-        descargaId = dm.enqueue(req)
-        _estado.value = EstadoIA.Descargando(m, 0f)
+        pausar = false
+        var fallos = 0
         while (true) {
-            delay(800)
-            val c = dm.query(DownloadManager.Query().setFilterById(descargaId)) ?: break
-            c.use {
-                if (!it.moveToFirst()) { _estado.value = EstadoIA.Error("La descarga se canceló."); return }
-                val st = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                val hecho = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                when (st) {
-                    DownloadManager.STATUS_SUCCESSFUL -> {
-                        tmp.renameTo(archivo(m)); cargar(m); return
-                    }
-                    DownloadManager.STATUS_FAILED -> {
-                        _estado.value = EstadoIA.Error("No se pudo descargar. Revise el wifi e intente de nuevo."); return
-                    }
-                    else -> _estado.value = EstadoIA.Descargando(m, if (total > 0) hecho.toFloat() / total else 0f)
+            if (pausar) { _estado.value = EstadoIA.SinModelo; return }
+            if (!enWifi()) {
+                _estado.value = EstadoIA.Error("Conéctese a wifi para continuar. Va en ${(progresoGuardado(m) * 100).toInt()}%; no se pierde lo descargado.")
+                return
+            }
+            try {
+                if (bajarTramo(m)) {
+                    parcial(m).renameTo(archivo(m))
+                    cargar(m)
+                    return
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                fallos++
+                if (fallos > 10) {
+                    _estado.value = EstadoIA.Error("La conexión se cortó varias veces. Toque Descargar para continuar desde ${(progresoGuardado(m) * 100).toInt()}%.")
+                    return
+                }
+                _estado.value = EstadoIA.Descargando(m, progresoGuardado(m), reintentando = true)
+                delay(2000L * fallos)
             }
         }
     }
 
-    fun cancelarDescarga() {
-        if (descargaId >= 0) {
-            (context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).remove(descargaId)
-            descargaId = -1
+    /** Baja lo que falta. Devuelve true cuando el archivo está completo. */
+    private suspend fun bajarTramo(m: Modelo): Boolean = withContext(Dispatchers.IO) {
+        val tmp = parcial(m)
+        val desde = if (tmp.exists()) tmp.length() else 0L
+        val c = URL(m.url).openConnection() as HttpURLConnection
+        c.instanceFollowRedirects = true
+        c.connectTimeout = 20_000
+        c.readTimeout = 45_000
+        if (desde > 0) c.setRequestProperty("Range", "bytes=$desde-")
+        try {
+            val codigo = c.responseCode
+            val total: Long
+            val seguir: Boolean
+            when (codigo) {
+                206 -> {
+                    total = c.getHeaderField("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
+                        ?: (desde + c.contentLengthLong)
+                    seguir = true
+                }
+                200 -> { total = c.contentLengthLong; seguir = false }
+                416 -> return@withContext desde > 0   // ya estaba completo
+                else -> throw IOException("HTTP $codigo")
+            }
+            var hecho = if (seguir) desde else 0L
+            var aviso = 0L
+            FileOutputStream(tmp, seguir).use { out ->
+                c.inputStream.use { inp ->
+                    val buf = ByteArray(256 * 1024)
+                    while (true) {
+                        if (pausar) throw IOException("pausa")
+                        val n = inp.read(buf)
+                        if (n < 0) break
+                        out.write(buf, 0, n)
+                        hecho += n
+                        if (hecho - aviso > 4_000_000) {
+                            aviso = hecho
+                            _estado.value = EstadoIA.Descargando(m, if (total > 0) hecho.toFloat() / total else 0f)
+                        }
+                    }
+                }
+            }
+            if (total > 0 && tmp.length() < total) throw IOException("Llegó incompleto")
+            true
+        } finally {
+            c.disconnect()
         }
+    }
+
+    /** Pausa la descarga. Lo descargado se guarda para continuar después. */
+    fun pausarDescarga() {
+        pausar = true
         _estado.value = EstadoIA.SinModelo
     }
 
     fun borrar(m: Modelo) {
-        apagar(); archivo(m).delete(); _estado.value = EstadoIA.SinModelo
+        apagar(); archivo(m).delete(); parcial(m).delete(); _estado.value = EstadoIA.SinModelo
     }
 
     suspend fun cargar(m: Modelo) = withContext(Dispatchers.Default) {

@@ -53,7 +53,7 @@ fun PantallaBodega(e: Estado, vm: KuraViewModel) {
             val v = Calculos.cofre(e, c)
             Column(Modifier.fillMaxWidth().padding(bottom = 11.dp).vidrio().padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Kanji(c.kanji)
+                    Icono(c.icono)
                     Spacer(Modifier.width(11.dp))
                     Column(Modifier.weight(1f)) {
                         Text(c.nombre, style = Letra.cuerpo)

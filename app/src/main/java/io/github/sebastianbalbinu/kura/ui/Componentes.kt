@@ -65,7 +65,7 @@ fun Hanko(kanji: String, tam: Dp = 40.dp, modifier: Modifier = Modifier) {
             .border(1.5.dp, Color(0x40FFEBDC), RoundedCornerShape(tam * 0.22f)),
         contentAlignment = Alignment.Center
     ) {
-        Text(kanji, color = K.papel, fontSize = (tam.value * 0.52f).sp, fontWeight = FontWeight.Bold)
+        Text(kanji, color = K.papel, fontSize = (tam.value * 0.52f).sp, fontWeight = FontWeight.Bold, fontFamily = Mincho)
     }
 }
 
@@ -114,7 +114,7 @@ fun TarjetaKenzo(texto: String, modifier: Modifier = Modifier, alTocar: (() -> U
             .let { if (alTocar != null) it.clickable { alTocar() } else it }
             .padding(16.dp)
     ) {
-        Hanko("賢", 30.dp)
+        Hanko("K", 30.dp)
         Spacer(Modifier.width(12.dp))
         Column {
             Text("KENZŌ", style = Letra.etiqueta.copy(color = K.oro))
@@ -200,9 +200,9 @@ fun BarraArroz(frac: Float, modifier: Modifier = Modifier, color: Color = K.oro)
 }
 
 @Composable
-fun Kanji(k: String, color: Color = K.oro, tam: Dp = 34.dp) {
+fun Icono(k: String, color: Color = K.oro, tam: Dp = 34.dp) {
     Box(
         Modifier.size(tam).clip(RoundedCornerShape(10.dp)).border(1.dp, color.copy(alpha = 0.45f), RoundedCornerShape(10.dp)),
         contentAlignment = Alignment.Center
-    ) { Text(k, color = color, fontSize = (tam.value * 0.5f).sp) }
+    ) { Text(k, fontSize = (tam.value * 0.48f).sp) }
 }

@@ -71,7 +71,8 @@ fun PantallaAjustes(e: Estado, vm: KuraViewModel, alVolver: () -> Unit) {
                 when (val s = ia) {
                     is EstadoIA.Lista -> "✓ Activa: ${s.modelo.nombre}" + (s.velocidad?.let { " · ${it.toInt()} letras/seg" } ?: "")
                     is EstadoIA.Cargando -> "Cargando ${s.modelo.nombre}…"
-                    is EstadoIA.Descargando -> "Descargando ${s.modelo.nombre}: ${(s.progreso * 100).toInt()}%"
+                    is EstadoIA.Descargando -> "Descargando ${s.modelo.nombre}: ${(s.progreso * 100).toInt()}%" +
+                        if (s.reintentando) " · se cortó, reintentando…" else "\nDeje Kura abierta: la pantalla no se apagará."
                     is EstadoIA.Error -> s.mensaje
                     EstadoIA.Apagada -> "Kenzō funciona sin IA."
                     EstadoIA.SinModelo -> "Aún no hay modelo descargado."
@@ -92,14 +93,17 @@ fun PantallaAjustes(e: Estado, vm: KuraViewModel, alVolver: () -> Unit) {
                         activo -> Text("en uso", color = K.verde, fontSize = 13.sp)
                         vm.ia.descargado(m) -> BotonSuave("Usar") { vm.usarIA(m.clave) }
                         ia is EstadoIA.Descargando -> {}
-                        else -> BotonSuave("Descargar") { vm.descargarIA(m) }
+                        else -> {
+                            val guardado = vm.ia.progresoGuardado(m)
+                            BotonSuave(if (guardado > 0f) "Continuar (${(guardado * 100).toInt()}%)" else "Descargar") { vm.descargarIA(m) }
+                        }
                     }
                 }
             }
             Spacer(Modifier.height(8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (ia is EstadoIA.Lista) BotonSuave("Medir velocidad") { vm.medirIA() }
-                if (ia is EstadoIA.Descargando) BotonSuave("Cancelar descarga") { vm.ia.cancelarDescarga() }
+                if (ia is EstadoIA.Descargando) BotonSuave("Pausar descarga") { vm.ia.pausarDescarga() }
                 BotonSuave(if (e.ajustes.modeloIa == "ninguno") "✓ Sin IA" else "Usar sin IA") { vm.usarIA("ninguno") }
             }
             Spacer(Modifier.height(10.dp))
